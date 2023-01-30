@@ -1,0 +1,109 @@
+import os
+import sys
+import pygame
+import argparse
+import requests
+
+
+def change_map(z, ll1, ll2, type="map"):
+    params = {
+        "ll": "{},{}".format(ll1, ll2),
+        "z": "{}".format(z),
+        "l": type
+    }
+    response = requests.get(map_request, params=params)
+
+    if not response:
+        print("Ошибка выполнения запроса:")
+        print(map_request)
+        print("Http статус:", response.status_code, "(", response.reason, ")")
+        sys.exit(1)
+
+    # Запишем полученное изображение в файл.
+    map_file = "map.png"
+    with open(map_file, "wb") as file:
+        file.write(response.content)
+    return map_file
+
+
+def terminate():
+    pygame.quit()
+    os.remove(map_file)
+    sys.exit()
+
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--x", type=int)
+parser.add_argument("--y", type=int)
+parser.add_argument("--z", type=int)
+
+args = parser.parse_args()
+l1, l2 = args.x, args.y
+z = args.z
+type_of_map = "map"
+
+def change_type_of_map():
+    global type_of_map
+    if type_of_map == "map":
+        type_of_map = "sat"
+        print('sat')
+    elif type_of_map == "sat":
+        type_of_map = "skl"
+    elif type_of_map == "skl":
+        type_of_map = 'map'
+
+map_request = "http://static-maps.yandex.ru/1.x/"
+map_params = {
+    "ll": "{},{}".format(l1, l2),
+    "z": "{}".format(z),
+    "l": "map"
+}
+response = requests.get(map_request, params=map_params)
+
+if not response:
+    print("Ошибка выполнения запроса:")
+    print(map_request)
+    print("Http статус:", response.status_code, "(", response.reason, ")")
+    sys.exit(1)
+
+# Запишем полученное изображение в файл.
+map_file = "map.png"
+with open(map_file, "wb") as file:
+    file.write(response.content)
+
+
+pygame.init()
+screen = pygame.display.set_mode((600, 450))
+
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            terminate()
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_PAGEUP:
+                if z < 21:
+                    z += 1
+                    map_file = change_map(z, l1, l2, type_of_map)
+            if event.key == pygame.K_PAGEDOWN:
+                if z > 2:
+                    z -= 1
+                    map_file = change_map(z, l1, l2, type_of_map)
+            if event.key == pygame.K_UP:
+                l2 += 1
+                map_file = change_map(z, l1, l2, type_of_map)
+            if event.key == pygame.K_DOWN:
+                l2 -= 1
+                map_file = change_map(z, l1, l2, type_of_map)
+            if event.key == pygame.K_LEFT:
+                l1 -= 1
+                map_file = change_map(z, l1, l2, type_of_map)
+            if event.key == pygame.K_RIGHT:
+                l1 += 1
+                map_file = change_map(z, l1, l2, type_of_map)
+            if event.key == pygame.K_q:
+                change_type_of_map()
+                map_file = change_map(z, l1, l2, type_of_map)
+
+    screen.blit(pygame.image.load(map_file), (0, 0))
+    pygame.display.flip()
